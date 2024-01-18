@@ -100,6 +100,7 @@ BEGIN_MESSAGE_MAP(CBichonFilterAppDlg, CDialogEx)
 	ON_COMMAND(ID_FILTER_UNSHARPMASK, &CBichonFilterAppDlg::OnFilterUnsharpmask)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SIGMA_SLIDER, &CBichonFilterAppDlg::OnNMCustomdrawSigmaSlider)
 	ON_COMMAND(ID_FILTER_NOISEGAUSSIAN, &CBichonFilterAppDlg::OnFilterNoisegaussian)
+	ON_COMMAND(ID_FILTER_BILATERAL, &CBichonFilterAppDlg::OnFilterBilateral)
 END_MESSAGE_MAP()
 
 
@@ -324,4 +325,10 @@ void CBichonFilterAppDlg::OnFilterNoisegaussian()
 	randn(noise, 0, stddev);
 	add(g_grayImage, noise, g_outputImage, Mat(), CV_8U);
 	DrawOutputImage(&g_grayBitmapInfo);
+}
+
+void CBichonFilterAppDlg::OnFilterBilateral()
+{
+	bilateralFilter(g_colorImage, g_outputImage, -1, 10, 5);
+	DrawOutputImage(&g_bitmapInfo);
 }

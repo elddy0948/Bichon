@@ -53,4 +53,5 @@ public:
 	afx_msg void OnNMCustomdrawSigmaSlider(NMHDR* pNMHDR, LRESULT* pResult);
 	CStatic m_sigmaText;
 	afx_msg void OnFilterNoisegaussian();
+	afx_msg void OnFilterBilateral();
 };
