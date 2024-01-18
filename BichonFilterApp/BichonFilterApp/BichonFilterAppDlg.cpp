@@ -101,6 +101,7 @@ BEGIN_MESSAGE_MAP(CBichonFilterAppDlg, CDialogEx)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SIGMA_SLIDER, &CBichonFilterAppDlg::OnNMCustomdrawSigmaSlider)
 	ON_COMMAND(ID_FILTER_NOISEGAUSSIAN, &CBichonFilterAppDlg::OnFilterNoisegaussian)
 	ON_COMMAND(ID_FILTER_BILATERAL, &CBichonFilterAppDlg::OnFilterBilateral)
+	ON_COMMAND(ID_FILTER_MEDIAN, &CBichonFilterAppDlg::OnFilterMedian)
 END_MESSAGE_MAP()
 
 
@@ -331,4 +332,25 @@ void CBichonFilterAppDlg::OnFilterBilateral()
 {
 	bilateralFilter(g_colorImage, g_outputImage, -1, 10, 5);
 	DrawOutputImage(&g_bitmapInfo);
+}
+
+
+void CBichonFilterAppDlg::OnFilterMedian()
+{
+	Mat tempImage = g_grayImage.clone();
+
+	int num = (int)(tempImage.total() * 0.1);
+
+	for (int i = 0; i < num; ++i) 
+	{
+		int x = rand() % tempImage.cols;
+		int y = rand() % tempImage.rows;
+		tempImage.at<uchar>(y, x) = (i % 2) * 255;
+	}
+
+	imshow("temp image", tempImage);
+
+	medianBlur(tempImage, g_outputImage, 3);
+
+	DrawOutputImage(&g_grayBitmapInfo);
 }

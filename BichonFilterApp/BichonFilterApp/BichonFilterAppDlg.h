@@ -54,4 +54,5 @@ public:
 	CStatic m_sigmaText;
 	afx_msg void OnFilterNoisegaussian();
 	afx_msg void OnFilterBilateral();
+	afx_msg void OnFilterMedian();
 };

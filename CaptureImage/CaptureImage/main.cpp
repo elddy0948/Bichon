@@ -12,7 +12,7 @@ void OnMouse(int event, int x, int y, int flags, void*)
 	switch (event)
 	{
 	case EVENT_LBUTTONDOWN:
-		pointOld = Point(x, y);
+		pointOld = Point(x, y);	
 		break;
 	case EVENT_LBUTTONUP:
 		pointCurr = Point(x, y);
