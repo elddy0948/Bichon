@@ -4,6 +4,10 @@
 
 #pragma once
 
+/* opencv */
+#include "opencv2//opencv.hpp"
+
+using namespace cv;
 
 // CBichonFilterAppDlg dialog
 class CBichonFilterAppDlg : public CDialogEx
@@ -31,4 +35,13 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedLoadButton();
+
+public:
+	Mat m_matImage;
+	BITMAPINFO* m_bitmapInfo;
+
+	void CreateBitmapInfo(int width, int height, int bpp);
+	void DrawImage();
 };
