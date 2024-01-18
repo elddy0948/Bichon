@@ -37,11 +37,20 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedLoadButton();
+	afx_msg void OnBnClickedLoadOutput();
+	afx_msg void OnBnClickedClearOutput();
+	afx_msg void OnFilterEmbossing();
+	afx_msg void OnFilterBlurring();
+	afx_msg void OnFilterGaussianblur();
+	afx_msg void OnFilterUnsharpmask();
 
 public:
-	Mat m_matImage;
-	BITMAPINFO* m_bitmapInfo;
-
-	void CreateBitmapInfo(int width, int height, int bpp);
+	void CreateBitmapInfo(BITMAPINFO& bitmapInfo, int width, int height, int bpp);
 	void DrawImage();
+	void DrawOutputImage(BITMAPINFO* bminfo);
+
+	CSliderCtrl m_sigmaSlider;
+	afx_msg void OnNMCustomdrawSigmaSlider(NMHDR* pNMHDR, LRESULT* pResult);
+	CStatic m_sigmaText;
+	afx_msg void OnFilterNoisegaussian();
 };

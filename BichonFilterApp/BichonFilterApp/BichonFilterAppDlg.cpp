@@ -12,8 +12,35 @@
 #define new DEBUG_NEW
 #endif
 
-
 // CAboutDlg dialog used for App About
+
+Point g_prevPoint;
+Point g_currPoint;
+Mat g_colorImage;
+Mat g_grayImage;
+Mat g_outputImage;
+
+BITMAPINFO g_bitmapInfo = {};
+BITMAPINFO g_grayBitmapInfo = {};
+
+int sigmaValue = 1;
+int stddev = 30;
+
+void MouseEvent(int event, int x, int y, int flags, void*)
+{
+	switch (event)
+	{
+	case EVENT_LBUTTONDOWN:
+		g_prevPoint = Point(x, y);
+		break;
+	case EVENT_LBUTTONUP:
+		g_currPoint = Point(x, y);
+		Mat newImg = g_colorImage(Rect(g_prevPoint.x, g_prevPoint.y, g_currPoint.x - g_prevPoint.x, g_currPoint.y - g_prevPoint.y));
+		if (g_prevPoint.x == g_currPoint.x && g_prevPoint.y == g_currPoint.y) { break; }
+		g_outputImage = newImg;
+		break;
+	}
+}
 
 class CAboutDlg : public CDialogEx
 {
@@ -45,10 +72,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
-
 // CBichonFilterAppDlg dialog
-
-
 
 CBichonFilterAppDlg::CBichonFilterAppDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_BICHONFILTERAPP_DIALOG, pParent)
@@ -59,6 +83,8 @@ CBichonFilterAppDlg::CBichonFilterAppDlg(CWnd* pParent /*=nullptr*/)
 void CBichonFilterAppDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_SIGMA_SLIDER, m_sigmaSlider);
+	DDX_Control(pDX, IDC_SIGMA_TEXT, m_sigmaText);
 }
 
 BEGIN_MESSAGE_MAP(CBichonFilterAppDlg, CDialogEx)
@@ -66,6 +92,14 @@ BEGIN_MESSAGE_MAP(CBichonFilterAppDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_LOAD_BUTTON, &CBichonFilterAppDlg::OnBnClickedLoadButton)
+	ON_BN_CLICKED(IDC_LOAD_OUTPUT, &CBichonFilterAppDlg::OnBnClickedLoadOutput)
+	ON_BN_CLICKED(IDC_CLEAR_OUTPUT, &CBichonFilterAppDlg::OnBnClickedClearOutput)
+	ON_COMMAND(ID_FILTER_EMBOSSING, &CBichonFilterAppDlg::OnFilterEmbossing)
+	ON_COMMAND(ID_FILTER_BLURRING, &CBichonFilterAppDlg::OnFilterBlurring)
+	ON_COMMAND(ID_FILTER_GAUSSIANBLUR, &CBichonFilterAppDlg::OnFilterGaussianblur)
+	ON_COMMAND(ID_FILTER_UNSHARPMASK, &CBichonFilterAppDlg::OnFilterUnsharpmask)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SIGMA_SLIDER, &CBichonFilterAppDlg::OnNMCustomdrawSigmaSlider)
+	ON_COMMAND(ID_FILTER_NOISEGAUSSIAN, &CBichonFilterAppDlg::OnFilterNoisegaussian)
 END_MESSAGE_MAP()
 
 
@@ -100,7 +134,7 @@ BOOL CBichonFilterAppDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	// TODO: Add extra initialization here
+	m_sigmaSlider.SetRange(1, 5);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -163,49 +197,29 @@ void CBichonFilterAppDlg::OnBnClickedLoadButton()
 		CString path = fileDlg.GetPathName();
 		CT2CA pszString(path);
 		std::string strPath(pszString);
+		g_colorImage = imread(strPath, IMREAD_UNCHANGED);
+		g_grayImage = imread(strPath, IMREAD_GRAYSCALE);
 
-		m_matImage = imread(strPath, IMREAD_UNCHANGED);
-		CreateBitmapInfo(m_matImage.cols, m_matImage.rows, m_matImage.channels() * 8);
+		CreateBitmapInfo(g_bitmapInfo, g_colorImage.cols, g_colorImage.rows, g_colorImage.channels() * 8);
+		CreateBitmapInfo(g_grayBitmapInfo, g_grayImage.cols, g_grayImage.rows, g_grayImage.channels() * 8);
+
 		DrawImage();
 	}
 }
 
-void CBichonFilterAppDlg::CreateBitmapInfo(int width, int height, int bpp)
+void CBichonFilterAppDlg::CreateBitmapInfo(BITMAPINFO& bitmapInfo, int width, int height, int bpp)
 {
-	if (m_bitmapInfo != NULL)
-	{
-		delete m_bitmapInfo;
-		m_bitmapInfo = NULL;
-	}
-
-	if (bpp == 8)
-		m_bitmapInfo = (BITMAPINFO*) new BYTE[sizeof(BITMAPINFO) + 255 * sizeof(RGBQUAD)];
-	else
-		m_bitmapInfo = (BITMAPINFO*) new BYTE[sizeof(BITMAPINFO)];
-
-	m_bitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	m_bitmapInfo->bmiHeader.biPlanes = 1;
-	m_bitmapInfo->bmiHeader.biBitCount = bpp;
-	m_bitmapInfo->bmiHeader.biCompression = BI_RGB;
-	m_bitmapInfo->bmiHeader.biSizeImage = 0;
-	m_bitmapInfo->bmiHeader.biXPelsPerMeter = 0;
-	m_bitmapInfo->bmiHeader.biYPelsPerMeter = 0;
-	m_bitmapInfo->bmiHeader.biClrUsed = 0;
-	m_bitmapInfo->bmiHeader.biClrImportant = 0;
-
-	if (bpp == 8)
-	{
-		for (int i = 0; i < 256; ++i)
-		{
-			m_bitmapInfo->bmiColors[i].rgbBlue = (BYTE)i;
-			m_bitmapInfo->bmiColors[i].rgbGreen = (BYTE)i;
-			m_bitmapInfo->bmiColors[i].rgbRed = (BYTE)i;
-			m_bitmapInfo->bmiColors[i].rgbReserved = 0;
-		}
-	}
-
-	m_bitmapInfo->bmiHeader.biWidth = width;
-	m_bitmapInfo->bmiHeader.biHeight = -height;
+	bitmapInfo.bmiHeader.biYPelsPerMeter = 0;
+	bitmapInfo.bmiHeader.biBitCount = bpp;
+	bitmapInfo.bmiHeader.biWidth = width;
+	bitmapInfo.bmiHeader.biHeight = -height;
+	bitmapInfo.bmiHeader.biPlanes = 1;
+	bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	bitmapInfo.bmiHeader.biClrImportant = 0;
+	bitmapInfo.bmiHeader.biClrUsed = 0;
+	bitmapInfo.bmiHeader.biSizeImage = 0;
+	bitmapInfo.bmiHeader.biXPelsPerMeter = 0;
 }
 
 void CBichonFilterAppDlg::DrawImage()
@@ -223,10 +237,91 @@ void CBichonFilterAppDlg::DrawImage()
 		rect.Height(),
 		0,
 		0,
-		m_matImage.cols,
-		m_matImage.rows,
-		m_matImage.data,
-		m_bitmapInfo,
+		g_colorImage.cols,
+		g_colorImage.rows,
+		g_colorImage.data,
+		&g_bitmapInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY);
+}
+
+void CBichonFilterAppDlg::DrawOutputImage(BITMAPINFO* bminfo)
+{
+	CClientDC dc(GetDlgItem(IDC_OUTPUT_PIC));
+	CRect rect;
+	GetDlgItem(IDC_OUTPUT_PIC)->GetClientRect(&rect);
+	SetStretchBltMode(dc.GetSafeHdc(), COLORONCOLOR);
+	StretchDIBits(
+		dc.GetSafeHdc(),
+		0,
+		0,
+		rect.Width(),
+		rect.Height(),
+		0,
+		0,
+		g_outputImage.cols,
+		g_outputImage.rows,
+		g_outputImage.data,
+		bminfo,
+		DIB_RGB_COLORS,
+		SRCCOPY);
+}
+
+
+void CBichonFilterAppDlg::OnBnClickedLoadOutput()
+{
+}
+
+void CBichonFilterAppDlg::OnBnClickedClearOutput()
+{
+	// TODO: Add your control notification handler code here
+}
+
+void CBichonFilterAppDlg::OnFilterEmbossing()
+{
+	float data[] = { -1, -1, 0, -1, 0, 1, 0, 1, 1 };
+	Mat emboss(3, 3, CV_32FC1, data);
+	filter2D(g_colorImage, g_outputImage, -1, emboss, Point(-1, -1), 128);
+	DrawOutputImage(&g_bitmapInfo);
+}
+
+void CBichonFilterAppDlg::OnFilterBlurring()
+{
+	blur(g_colorImage, g_outputImage, Size(7, 7));
+	DrawOutputImage(&g_bitmapInfo);
+}
+
+void CBichonFilterAppDlg::OnFilterGaussianblur()
+{
+	int sigma = 5;
+	GaussianBlur(g_colorImage, g_outputImage, Size(), (double)sigmaValue);
+	DrawOutputImage(&g_bitmapInfo);
+}
+
+void CBichonFilterAppDlg::OnFilterUnsharpmask()
+{
+	GaussianBlur(g_colorImage, g_outputImage, Size(), (double)sigmaValue);
+
+	float alpha = 1.0f;
+	g_outputImage = (1 + alpha) * g_colorImage - alpha * g_outputImage;
+	DrawOutputImage(&g_bitmapInfo);
+}
+
+void CBichonFilterAppDlg::OnNMCustomdrawSigmaSlider(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+
+	sigmaValue = m_sigmaSlider.GetPos();
+	std::wstring windowText = L"Sigma value : " + std::to_wstring(sigmaValue);
+	m_sigmaText.SetWindowTextW(windowText.c_str());
+
+	*pResult = 0;
+}
+
+void CBichonFilterAppDlg::OnFilterNoisegaussian()
+{
+	Mat noise(g_grayImage.size(), CV_32SC1);
+	randn(noise, 0, stddev);
+	add(g_grayImage, noise, g_outputImage, Mat(), CV_8U);
+	DrawOutputImage(&g_grayBitmapInfo);
 }
