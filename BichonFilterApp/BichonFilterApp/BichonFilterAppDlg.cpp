@@ -335,7 +335,7 @@ void CBichonFilterAppDlg::OnFilterEmbossing()
 	g_filterType = EMBOSSING;
 
 	float data[] = { -1, -1, 0, -1, 0, 1, 0, 1, 1 };
-	Mat emboss(3, 3, CV_32FC1, data);
+	Mat emboss(g_ksizeValue, g_ksizeValue, CV_32FC1, data);
 	filter2D(g_colorImage, g_outputImage, -1, emboss, Point(-1, -1), 128);
 	DrawOutputImage(g_bitmapInfo);
 }
@@ -446,6 +446,8 @@ void CBichonFilterAppDlg::OnNMCustomdrawKsizeSlider(NMHDR* pNMHDR, LRESULT* pRes
 	case MEDIAN:
 		OnFilterMedian();
 		break;
+	case EMBOSSING:
+		OnFilterEmbossing();
 	default:
 		break;
 	}
