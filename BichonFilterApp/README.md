@@ -5,6 +5,10 @@
 - OpenCV (C++)
 - MFC (GUI)
 
+## TODO
+
+- 이미지 저장 기능.
+
 ## Screen
 
 ![filterapp01.gif](./GIFs/filterapp01.gif)
