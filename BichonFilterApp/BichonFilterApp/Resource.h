@@ -16,6 +16,10 @@
 #define IDC_OUTPUT_PIC                  1005
 #define IDC_SIGMA_SLIDER                1006
 #define IDC_SIGMA_TEXT                  1007
+#define IDC_KSIZE_SLIDER                1008
+#define IDC_KSIZE_TEXT                  1009
+#define IDC_STDDEV_SLIDER               1010
+#define IDC_STDDEV_TEXT                 1011
 #define ID_FILTER_EMBOSSING             32771
 #define ID_FILTER_BLURRING              32772
 #define ID_FILTER_GAUSSIANBLUR          32773
@@ -30,7 +34,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32778
-#define _APS_NEXT_CONTROL_VALUE         1008
+#define _APS_NEXT_CONTROL_VALUE         1012
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

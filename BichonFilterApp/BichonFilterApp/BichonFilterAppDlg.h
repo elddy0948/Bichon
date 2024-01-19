@@ -45,7 +45,7 @@ public:
 	afx_msg void OnFilterUnsharpmask();
 
 public:
-	void CreateBitmapInfo(BITMAPINFO& bitmapInfo, int width, int height, int bpp);
+	void CreateBitmapInfo(BITMAPINFO** bmInfo, int width, int height, int bpp);
 	void DrawImage();
 	void DrawOutputImage(BITMAPINFO* bminfo);
 
@@ -55,4 +55,10 @@ public:
 	afx_msg void OnFilterNoisegaussian();
 	afx_msg void OnFilterBilateral();
 	afx_msg void OnFilterMedian();
+	CSliderCtrl m_ksizeSlider;
+	CStatic m_ksizeText;
+	afx_msg void OnNMCustomdrawKsizeSlider(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMCustomdrawStddevSlider(NMHDR* pNMHDR, LRESULT* pResult);
+	CStatic m_stddevText;
+	CSliderCtrl m_stddevSlider;
 };
