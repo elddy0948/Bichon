@@ -14,14 +14,30 @@
 
 // CAboutDlg dialog used for App About
 
+enum FILTERTYPE
+{
+	NONE,
+	EMBOSSING,
+	BLURRING,
+	GAUSSIAN_BLUR,
+	UNSHARP_MASK,
+	NOISE_GAUSSIAN,
+	BILATERAL,
+	MEDIAN
+};
+
 Point g_prevPoint;
 Point g_currPoint;
+
 Mat g_colorImage;
 Mat g_grayImage;
+
 Mat g_outputImage;
 
 BITMAPINFO g_bitmapInfo = {};
 BITMAPINFO g_grayBitmapInfo = {};
+
+FILTERTYPE g_filterType = NONE;
 
 int sigmaValue = 1;
 int stddev = 30;
@@ -199,6 +215,7 @@ void CBichonFilterAppDlg::OnBnClickedLoadButton()
 		CString path = fileDlg.GetPathName();
 		CT2CA pszString(path);
 		std::string strPath(pszString);
+
 		g_colorImage = imread(strPath, IMREAD_UNCHANGED);
 		g_grayImage = imread(strPath, IMREAD_GRAYSCALE);
 
@@ -245,6 +262,7 @@ void CBichonFilterAppDlg::DrawImage()
 		&g_bitmapInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY);
+
 }
 
 void CBichonFilterAppDlg::DrawOutputImage(BITMAPINFO* bminfo)
@@ -281,6 +299,8 @@ void CBichonFilterAppDlg::OnBnClickedClearOutput()
 
 void CBichonFilterAppDlg::OnFilterEmbossing()
 {
+	g_filterType = EMBOSSING;
+
 	float data[] = { -1, -1, 0, -1, 0, 1, 0, 1, 1 };
 	Mat emboss(3, 3, CV_32FC1, data);
 	filter2D(g_colorImage, g_outputImage, -1, emboss, Point(-1, -1), 128);
@@ -289,12 +309,15 @@ void CBichonFilterAppDlg::OnFilterEmbossing()
 
 void CBichonFilterAppDlg::OnFilterBlurring()
 {
+	g_filterType = BLURRING;
 	blur(g_colorImage, g_outputImage, Size(7, 7));
 	DrawOutputImage(&g_bitmapInfo);
 }
 
 void CBichonFilterAppDlg::OnFilterGaussianblur()
 {
+	g_filterType = GAUSSIAN_BLUR;
+
 	int sigma = 5;
 	GaussianBlur(g_colorImage, g_outputImage, Size(), (double)sigmaValue);
 	DrawOutputImage(&g_bitmapInfo);
@@ -302,6 +325,8 @@ void CBichonFilterAppDlg::OnFilterGaussianblur()
 
 void CBichonFilterAppDlg::OnFilterUnsharpmask()
 {
+	g_filterType = UNSHARP_MASK;
+
 	GaussianBlur(g_colorImage, g_outputImage, Size(), (double)sigmaValue);
 
 	float alpha = 1.0f;
@@ -317,11 +342,25 @@ void CBichonFilterAppDlg::OnNMCustomdrawSigmaSlider(NMHDR* pNMHDR, LRESULT* pRes
 	std::wstring windowText = L"Sigma value : " + std::to_wstring(sigmaValue);
 	m_sigmaText.SetWindowTextW(windowText.c_str());
 
+	switch (g_filterType)
+	{
+	case UNSHARP_MASK:
+		OnFilterUnsharpmask();
+		break;
+	case GAUSSIAN_BLUR:
+		OnFilterGaussianblur();
+		break;
+	default:
+		break;
+	}
+
 	*pResult = 0;
 }
 
 void CBichonFilterAppDlg::OnFilterNoisegaussian()
 {
+	g_filterType = NOISE_GAUSSIAN;
+
 	Mat noise(g_grayImage.size(), CV_32SC1);
 	randn(noise, 0, stddev);
 	add(g_grayImage, noise, g_outputImage, Mat(), CV_8U);
@@ -330,6 +369,8 @@ void CBichonFilterAppDlg::OnFilterNoisegaussian()
 
 void CBichonFilterAppDlg::OnFilterBilateral()
 {
+	g_filterType = BILATERAL;
+
 	bilateralFilter(g_colorImage, g_outputImage, -1, 10, 5);
 	DrawOutputImage(&g_bitmapInfo);
 }
@@ -337,6 +378,8 @@ void CBichonFilterAppDlg::OnFilterBilateral()
 
 void CBichonFilterAppDlg::OnFilterMedian()
 {
+	g_filterType = MEDIAN;
+
 	Mat tempImage = g_grayImage.clone();
 
 	int num = (int)(tempImage.total() * 0.1);
