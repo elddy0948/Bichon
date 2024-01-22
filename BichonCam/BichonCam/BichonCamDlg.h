@@ -5,7 +5,6 @@
 #pragma once
 
 #include "opencv2/opencv.hpp"
-#include "opencv2/core/ocl.hpp"
 
 #define CAMERA_EVENT_FLAG 1
 
@@ -38,9 +37,23 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	enum BUTTON_STATE {
+		NONE,
+		FACE_DETECT,
+		EYE_SENSOR,
+	};
+
 	void CreateBitmapInfo(BITMAPINFO** bmInfo, int width, int height, int bpp);
 	void DrawImage();
 	void DetectFace();
+	void DrawOutput();
 	CStatic m_cameraControl;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	CStatic m_outputControl;
+	void MLDetectFace(bool eyeSensor);
+	afx_msg void OnBnClickedDetectFaceButton();
+	afx_msg void OnBnClickedEyeSensorButton();
+	afx_msg void OnBnClickedClearButton();
+
+	BUTTON_STATE buttonState = NONE;
 };

@@ -13,8 +13,13 @@
 #endif
 
 VideoCapture capture;
-UMat g_image;
+Mat g_image;
+Mat g_outputImage;
 BITMAPINFO* g_bmInfo;
+dnn::Net g_net;
+
+const String model = "res10_300x300_ssd_iter_140000_fp16.caffemodel";
+const String config = "deploy.prototxt";
 
 // CAboutDlg dialog used for App About
 
@@ -60,6 +65,7 @@ void CBichonCamDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_CAMERA_CONTROL, m_cameraControl);
+	DDX_Control(pDX, IDC_OUTPUT_CONTROL, m_outputControl);
 }
 
 BEGIN_MESSAGE_MAP(CBichonCamDlg, CDialogEx)
@@ -67,6 +73,9 @@ BEGIN_MESSAGE_MAP(CBichonCamDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_DETECT_FACE_BUTTON, &CBichonCamDlg::OnBnClickedDetectFaceButton)
+	ON_BN_CLICKED(IDC_EYE_SENSOR_BUTTON, &CBichonCamDlg::OnBnClickedEyeSensorButton)
+	ON_BN_CLICKED(IDC_CLEAR_BUTTON, &CBichonCamDlg::OnBnClickedClearButton)
 END_MESSAGE_MAP()
 
 
@@ -102,8 +111,15 @@ BOOL CBichonCamDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
-	capture = VideoCapture(0);
-	ocl::setUseOpenCL(true);
+	capture = VideoCapture(1);
+
+	g_net = dnn::readNet(model, config);
+
+	if (g_net.empty())
+	{
+		std::cerr << "Net open failed!" << std::endl;
+		return -1;
+	}
 
 	SetTimer(1, 10, NULL);
 
@@ -169,12 +185,21 @@ void CBichonCamDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: Add your message handler code here and/or call default
 	switch (nIDEvent)
 	{
-	case 1:
+	case CAMERA_EVENT_FLAG:
 		capture >> g_image;
 		CreateBitmapInfo(&g_bmInfo, g_image.cols, g_image.rows, g_image.channels() * 8);
-
-		//DrawImage();
-		DetectFace();
+		switch (buttonState)
+		{
+		case NONE:
+			DrawImage();
+			break;
+		case FACE_DETECT:
+			MLDetectFace(false);
+			break;
+		case EYE_SENSOR:
+			MLDetectFace(true);
+			break;
+		}
 		break;
 	default:
 		break;
@@ -238,24 +263,139 @@ void CBichonCamDlg::DrawImage()
 		0,
 		g_image.cols,
 		g_image.rows,
-		g_image.getMat(cv::ACCESS_READ).data,
+		g_image.data,
 		g_bmInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY);
 }
 
+void CBichonCamDlg::DrawOutput()
+{
+	CClientDC dc(GetDlgItem(IDC_OUTPUT_CONTROL));
+	CRect rect;
+	GetDlgItem(IDC_OUTPUT_CONTROL)->GetClientRect(&rect);
+
+	SetStretchBltMode(dc.GetSafeHdc(), COLORONCOLOR);
+	StretchDIBits(
+		dc.GetSafeHdc(),
+		0,
+		0,
+		rect.Width(),
+		rect.Height(),
+		0,
+		0,
+		g_outputImage.cols,
+		g_outputImage.rows,
+		g_outputImage.data,
+		g_bmInfo,
+		DIB_RGB_COLORS,
+		SRCCOPY);
+}
+
+
 void CBichonCamDlg::DetectFace()
 {
 	CascadeClassifier classifier("haarcascade_frontalface_default.xml");
+	CascadeClassifier eyeClassifier("haarcascade_eye.xml");
 
 	if (classifier.empty()) { std::cout << "XML load failed.\n"; return; }
+	if (eyeClassifier.empty()) { std::cout << "XML load failed. \n"; return; }
+	
 	std::vector<Rect> faces;
 
-	classifier.detectMultiScale(g_image, faces);
+	classifier.detectMultiScale(g_outputImage, faces);
 
 	for (Rect rc : faces) {
-		rectangle(g_image, rc, Scalar(255, 0, 255), 2);
+		rectangle(g_outputImage, rc, Scalar(255, 0, 255), 2);
+
+		Mat faceROI;
+		faceROI = g_outputImage(rc);
+		
+		std::vector<Rect> eyes;
+		eyeClassifier.detectMultiScale(faceROI, eyes);
+
+		for (Rect eye : eyes)
+		{
+			rectangle(faceROI, eye, Scalar(0, 0, 0), -1);
+		}
+	}
+
+	DrawOutput();
+}
+
+void CBichonCamDlg::MLDetectFace(bool eyeSensor)
+{
+	CascadeClassifier eyeClassifier("haarcascade_eye.xml");
+
+	Mat blob = dnn::blobFromImage(g_image, 1, Size(300, 300), Scalar(104, 177, 123));
+	g_net.setInput(blob);
+	Mat res = g_net.forward();
+
+	Mat detect(res.size[2], res.size[3], CV_32FC1, res.ptr<float>());
+
+	for (int i = 0; i < detect.rows; ++i)
+	{
+		float confidence = detect.at<float>(i, 2);
+		if (confidence < 0.5)
+			break;
+
+		int x1 = cvRound(detect.at<float>(i, 3) * g_image.cols);
+		int y1 = cvRound(detect.at<float>(i, 4) * g_image.rows);
+		int x2 = cvRound(detect.at<float>(i, 5) * g_image.cols);
+		int y2 = cvRound(detect.at<float>(i, 6) * g_image.rows);
+
+		if (eyeSensor)
+		{
+			Mat faceROI;
+			faceROI = g_image(Rect(Point(x1, y1), Point(x2, y2)));
+			std::vector<Rect> eyes;
+			eyeClassifier.detectMultiScale(faceROI, eyes);
+
+			int minX = 0, minY = 0, maxX = 0, maxY = 0;
+
+			if (eyes.size() > 0)
+			{
+				minX = eyes[0].x;
+				minY = eyes[0].y;
+			}
+
+			for (Rect eye : eyes)
+			{
+				if (minX > eye.x)
+					minX = eye.x;
+				if (minY > eye.y)
+					minY = eye.y;
+				if (maxX < eye.x)
+					maxX = eye.x;
+				if (maxY < eye.y)
+					maxY = eye.y;
+			}
+
+			rectangle(faceROI, Rect(minX, minY, 200, 40), Scalar(0, 0, 200), -1);
+		}
+		else
+		{
+			rectangle(g_image, Rect(Point(x1, y1), Point(x2, y2)), Scalar(0, 255, 0), 2);
+		}
+
+		String label = format("Face : %4.3f", confidence);
+		putText(g_image, label, Point(x1, y1 - 1), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 255, 0));
 	}
 
 	DrawImage();
+}
+
+void CBichonCamDlg::OnBnClickedDetectFaceButton()
+{
+	buttonState = FACE_DETECT;
+}
+
+void CBichonCamDlg::OnBnClickedEyeSensorButton()
+{
+	buttonState = EYE_SENSOR;
+}
+
+void CBichonCamDlg::OnBnClickedClearButton()
+{
+	buttonState = NONE;
 }
