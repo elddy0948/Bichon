@@ -14,7 +14,6 @@
 
 VideoCapture capture;
 Mat g_image;
-Mat g_outputImage;
 BITMAPINFO* g_bmInfo;
 dnn::Net g_net;
 
@@ -65,7 +64,6 @@ void CBichonCamDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_CAMERA_CONTROL, m_cameraControl);
-	DDX_Control(pDX, IDC_OUTPUT_CONTROL, m_outputControl);
 }
 
 BEGIN_MESSAGE_MAP(CBichonCamDlg, CDialogEx)
@@ -182,7 +180,6 @@ HCURSOR CBichonCamDlg::OnQueryDragIcon()
 
 void CBichonCamDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	// TODO: Add your message handler code here and/or call default
 	switch (nIDEvent)
 	{
 	case CAMERA_EVENT_FLAG:
@@ -267,60 +264,6 @@ void CBichonCamDlg::DrawImage()
 		g_bmInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY);
-}
-
-void CBichonCamDlg::DrawOutput()
-{
-	CClientDC dc(GetDlgItem(IDC_OUTPUT_CONTROL));
-	CRect rect;
-	GetDlgItem(IDC_OUTPUT_CONTROL)->GetClientRect(&rect);
-
-	SetStretchBltMode(dc.GetSafeHdc(), COLORONCOLOR);
-	StretchDIBits(
-		dc.GetSafeHdc(),
-		0,
-		0,
-		rect.Width(),
-		rect.Height(),
-		0,
-		0,
-		g_outputImage.cols,
-		g_outputImage.rows,
-		g_outputImage.data,
-		g_bmInfo,
-		DIB_RGB_COLORS,
-		SRCCOPY);
-}
-
-
-void CBichonCamDlg::DetectFace()
-{
-	CascadeClassifier classifier("haarcascade_frontalface_default.xml");
-	CascadeClassifier eyeClassifier("haarcascade_eye.xml");
-
-	if (classifier.empty()) { std::cout << "XML load failed.\n"; return; }
-	if (eyeClassifier.empty()) { std::cout << "XML load failed. \n"; return; }
-	
-	std::vector<Rect> faces;
-
-	classifier.detectMultiScale(g_outputImage, faces);
-
-	for (Rect rc : faces) {
-		rectangle(g_outputImage, rc, Scalar(255, 0, 255), 2);
-
-		Mat faceROI;
-		faceROI = g_outputImage(rc);
-		
-		std::vector<Rect> eyes;
-		eyeClassifier.detectMultiScale(faceROI, eyes);
-
-		for (Rect eye : eyes)
-		{
-			rectangle(faceROI, eye, Scalar(0, 0, 0), -1);
-		}
-	}
-
-	DrawOutput();
 }
 
 void CBichonCamDlg::MLDetectFace(bool eyeSensor)

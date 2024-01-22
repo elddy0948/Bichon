@@ -46,10 +46,8 @@ public:
 	void CreateBitmapInfo(BITMAPINFO** bmInfo, int width, int height, int bpp);
 	void DrawImage();
 	void DetectFace();
-	void DrawOutput();
 	CStatic m_cameraControl;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	CStatic m_outputControl;
 	void MLDetectFace(bool eyeSensor);
 	afx_msg void OnBnClickedDetectFaceButton();
 	afx_msg void OnBnClickedEyeSensorButton();
