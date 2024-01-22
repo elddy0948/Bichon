@@ -5,6 +5,9 @@
 #pragma once
 
 #include "opencv2/opencv.hpp"
+#include "opencv2/core/ocl.hpp"
+
+#define CAMERA_EVENT_FLAG 1
 
 using namespace cv;
 
@@ -37,6 +40,7 @@ protected:
 public:
 	void CreateBitmapInfo(BITMAPINFO** bmInfo, int width, int height, int bpp);
 	void DrawImage();
+	void DetectFace();
 	CStatic m_cameraControl;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

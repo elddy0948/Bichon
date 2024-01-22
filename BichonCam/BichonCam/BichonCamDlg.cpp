@@ -13,7 +13,7 @@
 #endif
 
 VideoCapture capture;
-Mat g_image;
+UMat g_image;
 BITMAPINFO* g_bmInfo;
 
 // CAboutDlg dialog used for App About
@@ -48,10 +48,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
-
 // CBichonCamDlg dialog
-
-
 
 CBichonCamDlg::CBichonCamDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_BICHONCAM_DIALOG, pParent)
@@ -106,8 +103,9 @@ BOOL CBichonCamDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	capture = VideoCapture(0);
+	ocl::setUseOpenCL(true);
 
-	SetTimer(1, 150, NULL);
+	SetTimer(1, 10, NULL);
 
 	if (!capture.isOpened())
 	{
@@ -174,7 +172,9 @@ void CBichonCamDlg::OnTimer(UINT_PTR nIDEvent)
 	case 1:
 		capture >> g_image;
 		CreateBitmapInfo(&g_bmInfo, g_image.cols, g_image.rows, g_image.channels() * 8);
-		DrawImage();
+
+		//DrawImage();
+		DetectFace();
 		break;
 	default:
 		break;
@@ -238,8 +238,24 @@ void CBichonCamDlg::DrawImage()
 		0,
 		g_image.cols,
 		g_image.rows,
-		g_image.data,
+		g_image.getMat(cv::ACCESS_READ).data,
 		g_bmInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY);
+}
+
+void CBichonCamDlg::DetectFace()
+{
+	CascadeClassifier classifier("haarcascade_frontalface_default.xml");
+
+	if (classifier.empty()) { std::cout << "XML load failed.\n"; return; }
+	std::vector<Rect> faces;
+
+	classifier.detectMultiScale(g_image, faces);
+
+	for (Rect rc : faces) {
+		rectangle(g_image, rc, Scalar(255, 0, 255), 2);
+	}
+
+	DrawImage();
 }
